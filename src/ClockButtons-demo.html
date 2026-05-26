@@ -1,0 +1,192 @@
+<!-- prettier-ignore -->
+<!--
+The core technique is straightforward: use trigonometry to place buttons and SVG arc paths with `sweep-flag=1` (clockwise) between them. Here's a live demo — toggle between 5 and 6 buttons to see how it adapts:**The key pieces:**
+
+**Button positioning** — for N buttons, each sits at angle `i × (2π/N)` from a starting angle (e.g. `-π/2` for top-of-circle):
+```js
+const x = cx + R * Math.cos(baseAngle + i * step);
+const y = cy + R * Math.sin(baseAngle + i * step);
+```
+Buttons are absolutely positioned with `transform: translate(-50%, -50%)` to center them on that point.
+
+**Arc paths** — each arc is an SVG `A` command. The important flags are `large-arc-flag` (0 for adjacent buttons, since the arc is always less than 180°) and `sweep-flag=1` for clockwise:
+```
+M x1 y1 A R R 0 [large-arc] 1 x2 y2
+```
+Trim a small angular `gap` (≈0.2–0.25 rad) from each end of the arc so it starts and ends clear of the buttons, leaving room for the arrowhead.
+
+**Arrowheads** — use an SVG `<marker>` with `orient="auto"` and `marker-end`. Because `orient="auto"` aligns the marker with the path's tangent at the endpoint, it automatically points in the clockwise direction with no extra math:
+```svg
+<marker id="arr" viewBox="0 0 10 10" refX="8" refY="5"
+        markerWidth="6" markerHeight="6" orient="auto">
+  <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+```
+`context-stroke` inherits the arc's color into the arrowhead automatically.
+
+**Wrap-around arc** (last button back to first) works without any special handling — computing the endpoint angles normally gives two valid points on the circle, and `sweep-flag=1` picks the correct short clockwise path between them.-->
+<h2 class="sr-only">
+  Interactive demo: circular button layout with clockwise arc arrows, toggle 5
+  or 6 buttons
+</h2>
+<div
+  style="
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem 0;
+  "
+>
+  <div style="display: flex; gap: 8px; align-items: center">
+    <span style="font-size: 13px; color: var(--color-text-secondary)"
+      >Buttons:</span
+    >
+    <button id="t5" onclick="ring.setN(5)">5</button>
+    <button id="t6" onclick="ring.setN(6)">6</button>
+  </div>
+  <div
+    id="ring-wrap"
+    style="position: relative; width: 360px; height: 360px; margin: 0 auto"
+  ></div>
+  <p
+    style="
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      margin: 0;
+      text-align: center;
+    "
+  >
+    SVG arc — <code style="font-size: 11px">M x1 y1 A R R 0 0 1 x2 y2</code> —
+    sweep-flag=1 draws clockwise
+  </p>
+</div>
+
+<script>
+  const ring = (() => {
+    const NS = "http://www.w3.org/2000/svg";
+    let N = 6;
+    const LABELS6 = [
+      "Make 2nds",
+      "3-4 Dn",
+      "5-6 ⬇🠋🠳🡻⮟",
+      "Long 7ths",
+      "5-6 Up",
+      "3-4 Up",
+    ];
+    const LABELS5 = ["Plan", "Design", "Build", "Test", "Deploy"];
+
+    function mk(tag, attrs) {
+      const el = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+      return el;
+    }
+
+    function render() {
+      const wrap = document.getElementById("ring-wrap");
+      wrap.innerHTML = "";
+      const cx = 180,
+        cy = 180,
+        R = 132;
+      const step = (2 * Math.PI) / N;
+      const base = -Math.PI / 2;
+      const gap = 0.22; // radians to trim each end of an arc (leaves room for arrowhead)
+      const labels = N === 6 ? LABELS6 : LABELS5;
+
+      const svg = mk("svg", { width: 360, height: 360 });
+      Object.assign(svg.style, {
+        position: "absolute",
+        top: "0",
+        left: "0",
+        overflow: "visible",
+      });
+
+      // Arrow marker
+      const defs = mk("defs", {});
+      defs.innerHTML = `<marker id="ckarr" viewBox="0 0 10 10" refX="8" refY="5"
+      markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>`;
+      svg.appendChild(defs);
+
+      // Dashed guide ring
+      svg.appendChild(
+        mk("circle", {
+          cx,
+          cy,
+          r: R,
+          fill: "none",
+          stroke: "var(--color-border-tertiary)",
+          "stroke-width": "1",
+          "stroke-dasharray": "3 6",
+        })
+      );
+
+      // One arc per gap between adjacent buttons
+      for (let i = 0; i < N; i++) {
+        const a1 = base + i * step + gap;
+        const j = (i + 1) % N;
+        const a2 = base + j * step - gap;
+
+        const x1 = (cx + R * Math.cos(a1)).toFixed(2);
+        const y1 = (cy + R * Math.sin(a1)).toFixed(2);
+        const x2 = (cx + R * Math.cos(a2)).toFixed(2);
+        const y2 = (cy + R * Math.sin(a2)).toFixed(2);
+
+        // Clockwise angular span (for large-arc-flag)
+        let span = a2 - a1;
+        if (span < 0) span += 2 * Math.PI;
+        const large = span > Math.PI ? 1 : 0;
+
+        const path = mk("path", {
+          d: `M${x1} ${y1} A${R} ${R} 0 ${large} 1 ${x2} ${y2}`,
+          fill: "none",
+          stroke: "var(--color-text-secondary)",
+          "stroke-width": "1.5",
+          "marker-end": "url(#ckarr)",
+        });
+        svg.appendChild(path);
+      }
+
+      wrap.appendChild(svg);
+
+      // HTML buttons positioned over the SVG
+      for (let i = 0; i < N; i++) {
+        const a = base + i * step;
+        const x = cx + R * Math.cos(a);
+        const y = cy + R * Math.sin(a);
+        const btn = document.createElement("button");
+        btn.textContent = labels[i];
+        Object.assign(btn.style, {
+          position: "absolute",
+          left: x + "px",
+          top: y + "px",
+          transform: "translate(-50%,-50%)",
+          minWidth: "70px",
+          fontSize: "13px",
+          padding: "6px 10px",
+          whiteSpace: "nowrap",
+          zIndex: "1",
+        });
+        wrap.appendChild(btn);
+      }
+
+      // Highlight active count toggle
+      ["t5", "t6"].forEach((id) => {
+        const b = document.getElementById(id);
+        if (b)
+          b.style.borderColor =
+            id === "t" + N ? "var(--color-border-primary)" : "";
+      });
+    }
+
+    function setN(n) {
+      N = n;
+      render();
+    }
+    render();
+    return { setN };
+  })();
+</script>

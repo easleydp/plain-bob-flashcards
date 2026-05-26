@@ -1,0 +1,152 @@
+<!-- prettier-ignore -->
+<!--
+Here are the key implementation decisions and then a live demo:
+
+**Approach: absolute positioning within a fixed container**
+
+The core technique is a `position: relative` container div of a fixed size (say `220×180px`), with each button `position: absolute`. The "random" feel comes from:
+
+- Varied `top`/`left` offsets to scatter buttons around the container
+- `transform: rotate(Xdeg)` for the tilt (±60°)
+- Differing `z-index` values so buttons layer naturally
+- A consistent button size (square-ish, like a playing card) so overlaps are believable
+
+**Text safety:** Since each button is only 1–2 digits, the text lives right in the center of a ~52×52px tile. Overlaps happen at corners/edges, never obscuring the centre-text — as long as you keep centre-to-centre distances to at least ~35px.
+
+**Generating values:** Either hardcode 5–6 carefully chosen offset/rotation pairs (total control, no JS needed), or generate them with a simple `Math.random()` seeded loop in JS. For production, precompute and hardcode — it avoids layout jank on re-render.
+
+**Card aesthetic:** A white background, subtle border-radius, and a thin box-shadow give each button a physical "card" feel.
+
+Here's a live interactive demo you can play with:Hit **"Toss again"** to re-scatter, and use the slider to dial rotation from flat through to chaotic.
+
+A few notes on the implementation strategy shown:
+
+**Overlap collision avoidance** — the demo uses a simple minimum-distance check (centre-to-centre ≥ 42px) with a retry loop. This prevents full overlaps while still allowing the corner/edge grazing that creates the "landed on a surface" feel. 60 tries is plenty for 6 buttons in a 260×220 area; if it can't place one, it lands wherever — a graceful fallback.
+
+**`z-index` shuffling** — indices are assigned from a shuffled array, so no single button is always on top; it varies each toss. This is what makes it look organic rather than stacked in a fixed order.
+
+**Production tip** — if you want a deterministic layout (same scatter every page load, no JS at render time), just precompute one good set of values and hardcode them as inline styles. The randomiser above is handy for finding positions you like, then you can pin them.
+-->
+<style>
+  .scene {
+    position: relative;
+    width: 260px;
+    height: 220px;
+    margin: 2rem auto;
+  }
+  .card-btn {
+    position: absolute;
+    width: 54px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 500;
+    background: var(--color-background-primary);
+    border: 1.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    color: var(--color-text-primary);
+    box-shadow: 2px 3px 0 var(--color-border-tertiary);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+  }
+  .card-btn:hover {
+    box-shadow: 4px 5px 0 var(--color-border-secondary);
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+  .label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+</style>
+
+<h2 class="sr-only">
+  Scattered card buttons demo — numbers arranged in a random jumbled cluster
+</h2>
+
+<div class="scene" id="scene" aria-label="Scattered number buttons"></div>
+
+<div class="controls">
+  <span class="label">Max rotation:</span>
+  <input
+    type="range"
+    min="0"
+    max="60"
+    value="40"
+    id="rot-range"
+    style="width: 100px"
+  />
+  <span class="label" id="rot-val">±40°</span>
+  <button onclick="scatter()">Toss again ↗</button>
+</div>
+
+<script>
+  const NUMBERS = [3, 7, 12, 5, 28, 9];
+  const W = 260,
+    H = 220,
+    BTN = 54,
+    PAD = 30;
+  let maxRot = 40;
+
+  function rand(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function noOverlap(positions, x, y, minDist) {
+    for (const p of positions) {
+      const dx = p.x - x,
+        dy = p.y - y;
+      if (Math.sqrt(dx * dx + dy * dy) < minDist) return false;
+    }
+    return true;
+  }
+
+  function scatter() {
+    const scene = document.getElementById("scene");
+    scene.innerHTML = "";
+    const placed = [];
+    const zOrders = NUMBERS.map((_, i) => i + 1).sort(
+      () => Math.random() - 0.5
+    );
+
+    NUMBERS.forEach((num, i) => {
+      let x,
+        y,
+        tries = 0;
+      do {
+        x = rand(PAD, W - PAD - BTN);
+        y = rand(PAD, H - PAD - BTN);
+        tries++;
+      } while (!noOverlap(placed, x + BTN / 2, y + BTN / 2, 42) && tries < 60);
+
+      placed.push({ x: x + BTN / 2, y: y + BTN / 2 });
+      const rot = rand(-maxRot, maxRot);
+
+      const btn = document.createElement("button");
+      btn.className = "card-btn";
+      btn.textContent = num;
+      btn.style.left = x + "px";
+      btn.style.top = y + "px";
+      btn.style.transform = `rotate(${rot.toFixed(1)}deg)`;
+      btn.style.zIndex = zOrders[i];
+      scene.appendChild(btn);
+    });
+  }
+
+  document.getElementById("rot-range").addEventListener("input", function () {
+    maxRot = +this.value;
+    document.getElementById("rot-val").textContent = `±${maxRot}°`;
+    scatter();
+  });
+
+  scatter();
+</script>
