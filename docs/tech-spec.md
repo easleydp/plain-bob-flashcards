@@ -1,21 +1,11 @@
 # Plain Bob Flashcards: Technical Specification
 
-## 0. Prerequisite Research (Required)
+## 0. Prerequisite Research
 
-Before attempting to interpret or implement this specification, perform a brief background study on:
+Before implementing this specification, the development team must possess a foundational understanding of the following domains:
 
-- Topic: Change Ringing
-- Key concepts to understand:
-  - Change Ringing terminology
-  - The 'Plain Bob' family of change ringing methods
-- Goal: Gain sufficient context to correctly interpret terminology and design decisions in this spec.
-
-- Topic: [Flashcards](https://en.wikipedia.org/wiki/Flashcard)
-- Key concepts to understand:
-  - Spaced repetition and the Leitner system
-- Goal: Gain sufficient context to correctly interpret terminology and design decisions in this spec.
-
-Focus only on information directly relevant to this specification. For instance, for the Change Ringing topic, it is not required to understand bobs and singles.
+- **Change Ringing:** Familiarity with basic terminology (e.g., _rounds_, _hunting up/down_, _leading_, _dodging_, _inside/working bells_). Specifically, understand how a "plain course" of a method operates as a deterministic mathematical permutation of bell sequences. Knowledge of bobs and singles is **not** required for Version 1.0.
+- **Spaced Repetition Systems (SRS):** Understanding the Leitner system, which uses partitioned queues ("boxes") to optimise memory retention by scheduling reviews at expanding intervals based on past recall performance.
 
 ### Completion Criteria
 
@@ -24,372 +14,494 @@ Focus only on information directly relevant to this specification. For instance,
 
 If you proceed to implementation without completing the Prerequisite Research step, the output is considered invalid.
 
+---
+
 ## 1. Introduction
 
-**1.1. Purpose**
+### 1.1 Purpose
 
-This document outlines the technical specifications for a static browser based web app (i.e. no server side processing), named `Plain Bob Flashcards`, designed to help change ringers learn and memorise some essential details about Plain Bob methods.
+This document details the production-ready technical specifications for **Plain Bob Flashcards**, a client-side, zero-server-overhead single-page application (SPA). The application is designed to assist change ringers in internalising and memorising the core structural frameworks—such as the "circle of work" and "passing the treble" touchpoints—for standard Plain Bob methods.
 
-**1.2. Overview**
+### 1.2 Target Methods
 
-'Plain Bob' is a set of bell ringing 'methods' with a common structure. The methods to be supported in the first version of the app are:
+Version 1.0 supports three progressive methods within the Plain Bob family:
 
-- Plain Bob Doubles (5 bells)
-- Plain Bob Minor (6 bells)
-- Plain Bob Triples (7 bells)
+- **Plain Bob Doubles:** Executed on treble plus 4 working bells (plus an optional stationary cover bell).
+- **Plain Bob Minor:** Executed on treble plus 5 working bells.
+- **Plain Bob Triples:** Executed on treble plus 6 working bells (plus an optional stationary cover bell).
 
-After selecting one of the supported Plain Bob methods, the web app (probably an SPA) asks the user to answer a series of questions selected pseudo-randomly from a pre-defined set.
+### 1.3 System Overview
 
-The user's recent performance is tracked. Question that appear to have a greater than average failure rate are repeated more frequently. Conversely, questions the user appears to have no trouble with are repeated only occasionally.
+The application functions as a highly deterministic, procedurally driven quiz engine. Rather than relying on static, hard-coded question banks, the engine dynamically derives questions and validated answers at runtime using the intrinsic mathematical properties of the chosen method (detailed in Appendix A).
 
----
-
-## 2. General Requirements
-
-Assume there's just one local user (i.e. no need to discriminate different users).
+To maximise learning efficiency, user responses feed into a client-side Spaced Repetition engine stored entirely within the browser's `localStorage`.
 
 ---
 
-## 3. Visual Appearance
+## 2. General & Architectural Requirements
 
-Follow the style of Google's 'Material Design' (preferably Material Design 3). Maintenance developers should be able to adjustable all colours via CSS.
-
----
-
-## 4. Functional Behaviour
-
-Terminology notes:
-
-- **Treble** - Bell No.1. Always rings plain hunt (does no 'work').
-- **Tenor** (a.k.a. **cover** bell) - Only relevant for Doubles, Triples, etc. E.g. Plain Bob Doubles is a 5 bell method but is sometimes rung on 6 bells where bell 6 always rings in 6th place, so (in a sense) doesn't really take part in the method (generally not depicted in the 'blue line').
-- **Inside bell** (a.k.a. **working bell**) - A bell that does items of _work_ (e.g. making 2nds, dodging, long 5ths/7ths). That is, all the bells after the Treble, but not including the Tenor (if there is one).
-- **Item of work** - Each method involves the 'inside bells' cycling around items of work (such as making 2nds, dodging, long 5ths/7ths). These are defined on a per method basis in Appendix A.
-
-**4.1. ClockButtons widget**
-
-A number of questions employ a 'ClockButtons' widget. This is a reusable interactive 'circle of work' component consisting of between 4 and 6 buttons arranged in a circle (so, with 6 buttons, they would be approximately 60 degrees apart). Between each adjacent pair of buttons is a graphical arc/arrow, pointing in the clockwise direction.
-
-The component's initialisation method is supplied with a list of button labels (one per button).
-The first item in the list is for the first button and this is always positioned at the 12 o-clock position.
-The second and subsequent items are for the remaining buttons which are positioned around the circle in a clockwise direction.
-
-When a button is clicked an 'event' should be emitted. Use standard JavaScript CustomEvents (detail payload containing index and text) or accept a callback function during initialization.
-
-The component has an API that allows the client code to highlight a button (specified by text or index) as either 'correct' (e.g. button goes green) or 'incorrect' (e.g. button goes red). Once a button is marked as 'incorrect' it is disabled (although the text should remain just as visible as before).
-
-Implementation note: ./src/ClockButtons-demo.html provides some sample component rendering code, in case useful. However, it does not implement the event firing or correct/incorrect button highlighting functionality.
-
-**4.2. ScatteredButtons widget**
-
-A number of questions employ a 'ScatteredButtons' widget. This is a reusable interactive component consisting of between 2 to 6 buttons scattered randomly in a cluster.
-
-The buttons are positioned in an apparently random jumble. Each button's text will never be more than 6 characters. The buttons should be rendered in a tight cluster. They can be slightly overlapping as long as the button text is never obscured. Each button should have a random rotation, though never exceeding +/- 30 degrees deviation from the horizontal. The overall effect should be as if some cards have been tossed in to the air and allowed to land randomly on the floor (though with all the text fortuitously still readable!)
-
-Implementation note: To avoid excessive overlapping: Use a basic collision-avoidance boundary or a grid-jitter approach where buttons are assigned to a loose invisible grid and randomly offset/rotated within their respective cells.
-
-The component's initialisation method is supplied with:
-
-1. A list of button labels (one per button). Note that the specified order does not affect the positioning, which is random.
-2. 'before' text and 'after' text. These are simply to be rendered on either side (left and right respectively) of the button cluster, vertically aligned with the (approximate) centre of the cluster.
-
-Example: A question might ask: "You're following the other bells in turn after making 2nds. When will you pass the treble while hunting up?"
-The ScatteredButtons widget would then follow, initialised with:
-
-- `["3rds", "4ths", "5ths", "6ths", "7ths"]`
-- `{before: "When I am in", after: "place."}`
-
-> Aside (Instructional design principle): <br>This widget is intended for questions where we'd rather the learner tried to simply pluck the correct answer from their rote learned memory, rather than work their way methodically through a list considering each option in turn.
-
-When a button is clicked an 'event' should be emitted. Use standard JavaScript CustomEvents (detail payload specifying the text and the button's index w.r.t. the originally supplied array) or accept a callback function during initialization.
-
-The component has an API that allows the client code to highlight a button (specified by text or index) as either 'correct' (e.g. button goes green) or 'incorrect' (e.g. button goes red). Once a button is marked as 'incorrect' it is disabled (although the text should remain just as visible as before).
-
-Implementation note: ./src/ScatteredButtons-demo.html provides some sample component rendering code, in case useful. However, it does not implement the event firing or correct/incorrect button highlighting functionality.
-
-**4.3. Spaced Repetition**
-
-TODO: Insert details here of how a Flashcards 'spaced repetition' technique should be used, incorporating increasing time intervals between each review of a question in order to harness the 'spacing effect'.
-
-Possible approach:
-
-- Use the Leitner system.
-- Define 3 to 5 virtual "boxes" in the JSON schema.
-- Specify how a correct answer promotes a card to the next box, and how an incorrect answer demotes it back to Box 1.
-- Define the pseudo-random selection weightings (e.g., Box 1 cards have an 80% chance of being picked, Box 2 has 15%, Box 3 has 5%).
-
-**4.4. Performance Tracking**
-
-Performance data needs to be tracked for the following purposes:
-
-1. TODO: Insert details here of the data that should be collected in order to implement the chosen 'spaced repetition' technique.
-
-2. To support the "congratulations!" message displayed on the 'Summary Screen' it is also necessary to track which questions have been asked during the current session.
-
-Implementation note: Performance data should be stored in local storage and reloaded when the app starts. Prefer easily readable JSON format data to aid problem diagnosis.
+- **Zero Server Footprint:** The application must compile down to static assets (`HTML`, `CSS`, `JS`). It must run completely locally, allowing it to be served via simple file systems, GitHub Pages, or packaged as an offline-first progressive web app (PWA).
+- **Single-User State Execution:** The system assumes a single local user profile. Multi-tenant authentication is explicitly out of scope.
+- **State Persistence Guarantee:** User progress, performance logs, application settings, and current session parameters must persistently survive browser restarts via a robust sync engine writing to the browser’s `localStorage` API.
+- **Performance Metrics:** View transitions and UI component rendering must happen instantly ($<50\text{ms}$ latency) to maintain a highly responsive, fluid user experience.
 
 ---
 
-## 5. User Interface
+## 3. Visual Appearance & Theming
 
-**5.1. Start screen**
-
-On launching the app a start screen is rendered consisting of (from top to bottom):
-
-1. the app title "Plain Bob Flashcards"
-
-2. "Select Plain Bob method": vertically oriented radio button selector with an option for each supported PB method (from least bells to most bells).
-
-   If a previously selected option is recorded (in local storage) then this should be selected by default, otherwise the first option shall be the default selection.
-
-3. "Focus on": vertically oriented radio button selector with three options: **Circle of work**; **Passing the treble**; **Everything!**
-
-   To the right of each class option (i.e. all bar "Everything!") is displayed the number of questions in parenthesis.
-
-   If a previously selected option is recorded (in local storage) then this should be selected by default, otherwise "Everything!" shall be the default selection.
-
-4. A "Start" button
-
-   On clicking this button the user moves to the Question screen (see next).
-
-The whole Start Screen scrolls vertically if necessary.
-
-**5.2. Question screen**
-
-This is populated with the next pseudo-randomly selected question. The content may need to scroll vertically.
-
-If the user answers incorrectly, some suitable visual feedback is given and they get to try again until successful.
-
-When the user answers a question correctly: (i) some suitable visual feedback is given; (ii) a "Next" button appears, anchored towards the bottom of the viewport (i.e. position in the viewport remains fixed even if the content is scrolled).
-NOTE: As far as performance tracking is concerned, it's the **initial** attempt that counts (i.e. user must get the question right first time for it to be recorded as correctly answered).
-
-Note: the persistent performance tracking data should be updated after each (initial) answer (in case the app crashes or the user simply abandons the session).
-
-**5.3. Summary screen**
-
-From top to bottom:
-
-1. the user's stats for this session:
-
-"Congratulations! You spent N minutes learning `<method name>` during this session. You answered M distinct questions - P right first time and Q needing re-attempts. Come back soon for more practice!"
-
-Special override message, to be used if the tracking data indicates that every question for the selected method has been answered successfully: "Congratulations! You have mastered every aspect of a plain course of `<method name>`. You're ready for the tower!"
-
-2. A link back to the Start screen - "Start again". (Implementation note: Regardless of what the 'link' looks like, use a `<button>`. Modern A11y (accessibility) and semantic HTML guidelines state that links (`<a>`) are for navigating to a new URL/document, whereas buttons (`<button>`) are for triggering an action or state change on the current page.) If the user selects this option then the effect should be as if they close and restart the app (i.e. new session commences).
+- **Design Framework:** Implement using **Material Design 3 (MD3)** design tokens and structural patterns. Components (e.g., Cards, Buttons, Radio Lists, and Dialogs) must conform to MD3 layouts, touch-target minimums ($48\times48\text{px}$), and shadow treatments.
+- **CSS Variable Architecture:** The design must use a unified CSS Custom Property (variables) theme map. Colors must not be hardcoded within component layouts. Developers or future maintainers must be able to change themes entirely by altering a central `:root` declaration block (supporting Light/Dark system configurations seamlessly).
+- **Accessibility (A11y):** All text elements must strictly adhere to WCAG 2.1 AA contrast ratios ($4.5:1$ for normal text, $3:1$ for large text). Form controls, buttons, and custom interactive widgets must support native keyboard navigation (`Tab`, `Space`, `Enter`) and expose correct ARIA states (`aria-checked`, `aria-disabled`, `aria-live`).
 
 ---
 
-# 6. Questions
+## 4. Core Functional Components & Algorithmic Design
 
-There are two question classes:
+### 4.1 ClockButtons Widget
 
-- Circle of Work
-- Passing the Treble
+This component visually models the cyclical nature of change ringing work items by rendering an interactive "circle of work".
 
-The following sub-sections describe all the questions related to each class.
+```
+    [12:00 / Item 1] ────────► [03:00 / Item 2]
+           ▲                          │
+           │                          │
+           │                          ▼
+    [09:00 / Item 4] ◄──────── [06:00 / Item 3]
+```
 
-Unless specified otherwise, each question description (such as the one titled "First piece of work") is actually an abstract sub-class of question. The actual concrete questions should be procedurally generally based on (i) the selected Plain Bob method and (ii) the multiplicity of possibilities specified for that method in Appendix A (e.g., one concrete instance per inside bell).
+- **Layout Engine:** Dynamically calculates layout positions for a variable array of 4 to 6 items. Components are positioned radially at equidistant angular steps around a central anchor point:
 
-**6.1. 'Circle of Work' related questions**
+$$\theta_i = \frac{2\pi \cdot i}{N} - \frac{\pi}{2}$$
 
-**6.1.1. First piece of work**
+_(where $i$ is the 0-indexed position, $N$ is total elements, and subtracting $\pi/2$ locks the first item precisely at the 12 o'clock apex)._
 
-Question text: "Starting in `<Nth>` place, what is the first piece of work?"
+- **Visual Elements:** Renders crisp SVG graphical arcs or directional arrows between adjacent nodes pointing strictly clockwise, emphasising the forward flow of the method.
+- **Event Model:** Emits a standard JavaScript `CustomEvent` named `clock-button-selection` containing a payload detailing the clicked element's label and index position:
 
-Beneath the question text, render the ClockButtons widget initialised with the work items relating to the selected PB method (in the cyclical order given in Appendix A). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
+```json
+{ "detail": { "index": 2, "label": "Dodge 5-6 Down" } }
+```
 
-Concrete examples: For Plain Bob Doubles, "`<Nth>`" in the question text would be one of: 2nd, 3rd, 4th, 5th.
-And the respective correct answer (first piece of work) would be:
-3-4 Down, Long 5ths, 3-4 Up, Make 2nds
+- **API Interface:** Exposes public methods to modify button states cleanly:
+- `highlightCorrect(identifier)`: Turns target green, leaves interactive.
+- `highlightIncorrect(identifier)`: Turns target red, applies an explicit `disabled` state attribute, updates `aria-disabled="true"`, but preserves text visibility/contrast.
 
-**6.1.2. Next work**
+### 4.2 ScatteredButtons Widget
 
-Question text: "In a plain course, what is the next work after `<work item>`?"
+This component presents selection choices in an organic, non-linear cluster, intentionally disrupting spatial memory to enforce deep structural recall over simple positional scanning.
 
-Beneath the question text, render a vertically oriented list of radio button options, one per possible answer. The order of these options should be randomised. If the user selects the correct answer, the option is highlighted as correct and the Next question button is displayed. Otherwise, the option is highlighted as incorrect, deselected and disabled, and a "Try again" toast message is briefly displayed.
+- **Layout Engine (Grid-Jitter Collision Avoidance):** To balance an organic look with rigorous UI readability, the widget must not use purely random coordinates. Instead, it maps items to an internal, invisible structural grid (e.g., $3\times2$ cells). Each item is assigned its own cell bounding box, then subjected to a constrained layout calculation:
+- **Position Offset:** Random translation within $\pm15\%$ of cell dimensions.
+- **Rotation Jitter:** Random rotation between $-30^\circ$ and $+30^\circ$.
 
-Concrete example: For Plain Bob Doubles, "`<work item>`" in the question text might be "3-4 Up". In which case the correct answer would be "Make 2nds".
+- **Inline Structural Context:** Accepts `before` and `after` string properties. These strings are rendered as persistent inline text elements framing the left and right boundaries of the button cluster, creating a natural syntax sentence:
+- _Example:_ `[When I am in]` -> `{Cluster of randomised place buttons}` -> `[place.]`
 
-**6.1.3. Course and After bells**
+- **Event & Interaction States:** Matches the identical `CustomEvent` payload structure and color-state highlighting API of the `ClockButtons` component.
 
-Question text: "In a plain course, if you are on bell `<bell number>` the first bell you will follow is:"
+### 4.3 Spaced Repetition Engine (Leitner Framework)
 
-Beneath this question text, render a drop-down list (DDL) containing all the other working bell numbers (in order), plus a special option: "None of the above - I will lead!". (That special option is always the correct answer when `<bell number>` is 2.)
+The app uses a 4-Box Leitner optimisation algorithm to schedule questions dynamically. All questions within a chosen method tracking matrix are assigned to a virtual box queue.
 
-Beneath this first DDL, further question text: "... and your **course** and **after** bells are:
+```
++-----------------------------------+
+|              BOX 1                | <-- Default starting point
+| Selection Probability: 70%        | <-- Incorrect answers always demoted here
++-----------------------------------+
+                 │ (On Correct Answer)
+                 ▼
++-----------------------------------+
+|              BOX 2                |
+| Selection Probability: 20%        |
++-----------------------------------+
+                 │ (On Correct Answer)
+                 ▼
++-----------------------------------+
+|              BOX 3                |
+| Selection Probability: 8%         |
++-----------------------------------+
+                 │ (On Correct Answer)
+                 ▼
++-----------------------------------+
+|              BOX 4 (Mastered)     |
+| Selection Probability: 2%         |
++-----------------------------------+
 
-Beneath this question text, render a two vertically aligned DDLs containing all the other working bell numbers, in order. The first should be followed by hint text "(you take off the lead)"; the second should be followed by hint text "(takes you off the lead)".
+```
 
-Once the user has chosen a bell number for all three DDLs: those that are correct are highlighted as correct; if all are correct the Next question button is displayed. Otherwise, the incorrect DDLs are highlighted as incorrect and a "Try again" toast message is briefly displayed. On making a subsequent attempt for a particular DDL, the 'incorrect' highlight is removed when they first open the DDL, and then potentially re-applied if they get it wrong again. When all are correct the Next question button is displayed
+#### Algorithmic Behaviour Matrix
 
-Concrete example: For Plain Bob Doubles, if "`<bell number>`" in the question text is 3, then the first bell you will follow is 4, course bell is 5, after bell is 2.
+1. **Initialisation:** On the first launch of a specific method, all unique generated question instances are registered into **Box 1**.
+2. **Queue Probability Distribution:** When selecting the next question, the application rolls a value between 1 and 100 to determine which Box array to read from based on targeted probabilistic allocations:
 
-**6.2. 'Passing the Treble' related questions**
+- **Box 1:** 70% probability hook (Value 1–70)
+- **Box 2:** 20% probability hook (Value 71–90)
+- **Box 3:** 8% probability hook (Value 91–98)
+- **Box 4:** 2% probability hook (Value 99–100)
+  _(If the rolled box is currently empty, the engine sequentially falls back to the nearest populated lower box number; if all higher boxes are empty, it defaults back to Box 1)._
 
-**6.2.1. Passing treble on the way up after making 2nds**
+3. **State Upgrades/Downgrades:**
 
-Question text: "Hunting up after making 2nds, when will you pass the treble"?
+- **Correct Response:** The question moves up one box tier (e.g., Box 1 $\rightarrow$ Box 2), capping out at Box 4.
+- **Incorrect Response:** The question is immediately stripped of its tier and demoted directly back to **Box 1** to maximise short-term exposure.
 
-Beneath the question text, render the ScatteredButtons widget initialised with `{before: "When I am in", after: "place."}` and with all the possible places that make sense for the selected PB method. So, for PB Doubles: "2nd", "3rd", "4th", 5th". If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
+### 4.4 Data Schema & Analytics Performance Tracking
 
-Only one instance of this question is needed per PB method.
+A single, clean JSON record structure tracks progress within `localStorage`. Developers must design actions around a unified schema model:
 
-Concrete example: For Plain Bob Doubles the correct answer would be "5th".
-
-**6.2.2. Passing treble after a long place**
-
-Question text: "After `<long place name>`, when will you next follow the treble (while hunting down to lead)?"
-('long place name' means e.g. "Long 5ths" for PB Doubles, "Long 7ths" for PB Triples.)
-
-Beneath the question text, render the ScatteredButtons widget initialised with `{before: "When I am in", after: "place."}` and with all the possible places (so, "4th" to "2nd" for PB Doubles, "6th" to "2nd" for PB Triples). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
-
-Only one instance of this question is needed per PB method.
-
-Concrete example: For Plain Bob Doubles, "`<long place name>`" in the question text would be "Long 5ths", and the correct answer would be "4th".
-
-**6.2.3. Noticing where you pass treble on the way up**
-
-Question text: "You notice you've passed the treble in `<Nth>` place while hunting up. What work is coming next?
-
-Beneath the question text, render the ClockButtons widget initialised with the work items relating to the selected PB method (in the cyclical order given in Appendix A). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
-
-Concrete examples: For Plain Bob Doubles, "`<Nth>`" in the question text would be one of: 5th, 4th, 3rd, 2nd.
-And the respective correct answer (next work) would be:
-3-4 Down, Long 5ths, 3-4 Up, Make 2nds
-
-**6.2.4. Passing treble on the way down**
-
-Question text: "You've just `<work item action>`. When will you next pass the treble while hunting down to lead?" where `<work item action>` is one of (e.g. for PB Doubles): "made 2nds", "done the 3-4 down dodge", "done long 5ths", "done the 3-4 up dodge"
-
-Beneath the question text, render the ScatteredButtons widget initialised with `{before: "When I am in", after: "place."}` and with all the possible places that make sense for the given question. So, for down dodges, only those places remaining beneath the dodge (e.g. after the 3-4 down dodge in PB Doubles, the only possible answers are 3rds and 2nds). For all other work items (making 2nds, up dodges, long place at the back) - all positions are valid (e.g. for PB Doubles: 5ths, 4ths, 3rds and 2nds). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
-
-If the user selects the correct answer, the option is highlighted as correct and the Next question button is displayed. Otherwise, the option is highlighted as incorrect, deselected and disabled, and a "Try again" toast message is briefly displayed.
-
-A concrete instance of this question should be generated for each 'down' dodge of the selected Plain Bob method.
+```json
+{
+  "settings": {
+    "lastSelectedMethod": "Plain Bob Minor",
+    "lastSelectedFocus": "Circle of work"
+  },
+  "tracking": {
+    "Plain Bob Minor": {
+      "questions": [
+        {
+          "id": "pbm_circle_next_dodge_3_4_down",
+          "box": 2,
+          "totalAttempts": 4,
+          "firstTimeSuccesses": 2
+        }
+      ]
+    }
+  }
+}
+```
 
 ---
 
-## Appendix A: Plain Bob method particulars
+## 5. View States & Navigation Flow
 
-Implementation note: The data tables presented here are provided for the convenience of readers of this specification. For the implementation code, better to determine the general patterns (common to all PB methods) rather than hard-code the data! This will be particularly beneficial if the app is ever extended to support other PM methods (e.g. Minimus, Major).
+The single-page application manages user progress through three discrete view structures:
 
-**Method: Plain Bob Doubles**
+```
++-------------------+      "Start" Button Click      +-------------------+
+|   Start Screen    | ─────────────────────────────> |  Question Screen  |
++-------------------+                                +-------------------+
+          ▲                                                    │
+          │                                                    │ All Questions
+          │ "Start Again" Button Click                         │ Completed in
+          │ (Resets Current Session)                           │ Current Stack
+          │                                                    ▼
+          └─────────────────────────────────────────── +-------------------+
+                                                       |  Summary Screen   |
+                                                       +-------------------+
 
-Rung on 5 bells (treble plus 4 inside bells) plus an optional cover. The 4 inside bells cycle through the following items of work:
+```
 
-1. **Make 2nds**
-2. **Dodge 3-4 Down**
-3. **Long 5ths**
-4. **Dodge 3-4 Up**
+### 5.1 Start Screen
 
-The following table specifies the 'starts', i.e. the first item of work for each inner/working bell:
+- **Header Module:** Displays the title `"Plain Bob Flashcards"`.
+- **Method Selector Configuration:** A vertical radio group allowing selection of the target method. By default, it reads and highlights `settings.lastSelectedMethod` from storage. If empty, it defaults to the first available selection (_Plain Bob Doubles_).
+- **Focus Scope Configuration:** A vertical radio control interface containing three filtering vectors:
+- `Circle of work` _(Displays item count dynamically evaluated from generator rules)_
+- `Passing the treble` _(Displays item count)_
+- `Everything!` _(Default state fallback)_
 
-| Starting Place / Bell | Work item      |
-| :-------------------- | :------------- |
-| 2nds                  | Dodge 3-4 Down |
-| 4ths                  | Long 5ths      |
-| 5ths                  | Dodge 3-4 Up   |
-| 3rds                  | Make 2nds      |
+- **Execution Trigger:** A single primary action button labelled `"Start"`. Clicking initialises the session data arrays, flags the current time stamp, and renders the first question interface.
 
-The following table specifies (i) the bell initially followed (after leaving 'rounds') and (ii) 'course' and 'after' bells (for plain a course):
+### 5.2 Question Screen
 
-| Bell | Bell initially followed | Course bell | After bell |
-| :--- | :---------------------- | :---------- | :--------- |
-| 2    | None (lead!)            | 3           | 4          |
-| 3    | 4                       | 5           | 2          |
-| 4    | 1                       | 2           | 5          |
-| 5    | 3                       | 4           | 3          |
+- **Dynamic Layout Rendering:** Reads the selected question object structure, compiles string contexts procedurally, and instantiates the specific interactive widget requested (`ClockButtons`, `ScatteredButtons`, or standard randomised multiple-choice arrays).
+- **Session State Logging Rules:**
+- An input attempt is logged to the persistent state engine **only on the user's initial interaction** with that specific question.
+- If correct on the first attempt, `firstTimeSuccesses` increments alongside `totalAttempts`. The question immediately triggers its specific visual success states.
+- If incorrect on the first attempt, `totalAttempts` increments, but `firstTimeSuccesses` remains unchanged. The interface applies local validation penalties (e.g., turning a button red, disabling it), showing a temporary user-facing toast notification saying `"Try again"`, and holding the user inside the current card interface until they identify the correct solution.
 
-The following table specifies the next piece of work to be performed according to where you last rang over the treble while hunting up. The third column specifies when you then next ring over the treble while hunting down (after performing the piece of work).
+- **Session Progress Advance:** Upon a successful input, a fixed action button labelled `"Next"` slides up or fades in at the base of the viewport. It remains fixed during scrolling, ensuring immediate access to advance the view state.
 
-| Meet Treble on the way up | Next work      | Meet Treble on the way down |
-| :------------------------ | :------------- | :-------------------------- |
-| 5                         | Dodge 3-4 Down | 3                           |
-| 4                         | Long 5ths      | 4                           |
-| 3                         | Dodge 3-4 Up   | 5                           |
-| 2                         | Make 2nds      | 2                           |
+### 5.3 Summary Screen
 
-**Method: Plain Bob Minor**
+- **Analytical Session Breakdown Reporting:** Displays targeted operational text maps summarising performance details calculated from the current run:
 
-Rung on 6 bells (treble plus 5 inside bells). The 5 inside bells cycle through the following items of work:
+  > `"Congratulations! You spent N minutes learning [Method Name] during this session. You answered M distinct questions — P right first time and Q needing re-attempts. Come back soon for more practice!"`
 
-1. **Make 2nds**
-2. **Dodge 3-4 Down**
-3. **Dodge 5-6 Down**
-4. **Dodge 5-6 Up**
-5. **Dodge 3-4 Up**
+- **Mastery State Override Trigger:** If evaluation metrics confirm that every distinct procedural question mapped to the targeted method is safely inside **Box 4** of the Leitner array, the summary block swaps its copy cleanly out for a specialised milestone message:
 
-The following table specifies the 'starts', i.e. the first item of work for each inner/working bell:
+  > `"Congratulations! You have mastered every aspect of a plain course of [Method Name]. You're ready for the tower!"`
 
-| Starting Place / Bell | Work item      |
-| :-------------------- | :------------- |
-| 2nds                  | Dodge 3-4 Down |
-| 4ths                  | Dodge 5-6 Down |
-| 6ths                  | Dodge 5-6 Up   |
-| 5ths                  | Dodge 3-4 Up   |
-| 3rds                  | Make 2nds      |
+- **Session Demolition/Reset Action:** Provides an explicit application restart action mapped cleanly to a semantic HTML `<button>` styled as an explicit primary flat layout element textually labelled `"Start again"`. Activating this element wipes active runtime session configurations and redirects back to a fresh instance of the Start Screen.
 
-The following table specifies (i) the bell initially followed (after leaving 'rounds') and (ii) 'course' and 'after' bells (for plain a course):
+---
 
-| Bell | Bell initially followed | Course bell | After bell |
-| :--- | :---------------------- | :---------- | :--------- |
-| 2    | None (lead!)            | 3           | 4          |
-| 3    | 4                       | 5           | 2          |
-| 4    | 1                       | 2           | 6          |
-| 5    | 6                       | 6           | 3          |
-| 6    | 3                       | 4           | 5          |
+## 6. Procedural Question Generation Engine
 
-The following table specifies the next piece of work to be performed according to where you last rang over the treble while hunting up. The third column specifies when you then next ring over the treble while hunting down (after performing the piece of work).
+Questions are generated procedurally using the method frameworks listed in Appendix A.
 
-| Meet Treble on the way up | Next work      | Meet Treble on the way down |
-| :------------------------ | :------------- | :-------------------------- |
-| 6                         | Dodge 3-4 Down | 3                           |
-| 5                         | Dodge 5-6 Down | 4                           |
-| 4                         | Dodge 5-6 Up   | 5                           |
-| 3                         | Dodge 3-4 Up   | 6                           |
-| 2                         | Make 2nds      | 2                           |
+### 6.1 'Circle of Work' Template Classes
 
-**Method: Plain Bob Triples**
+#### 6.1.1 First Piece of Work
 
-Rung on 7 bells (treble plus 6 inside bells) plus an optional cover. The 6 inside bells cycle through the following items of work:
+- **Abstract Prompt Construction:** `"Starting in [Starting Place] place, what is your first piece of work?"`
+- **Component Interaction Target:** Instantiates a `ClockButtons` component. Labels are mapped from the complete ordered cyclical array of work items matching that specific method.
+- **Evaluation Hook:** The correct target button corresponds directly to the precise work item cross-referenced with the starting place lookup map.
 
-1. **Make 2nds**
-2. **Dodge 3-4 Down**
-3. **Dodge 5-6 Down**
-4. **Long 7ths**
-5. **Dodge 5-6 Up**
-6. **Dodge 3-4 Up**
+#### 6.1.2 Next Work Element Sequence
 
-The following table specifies the 'starts', i.e. the first item of work for each inner/working bell:
+- **Abstract Prompt Construction:** `"In a plain course, what is the next work after [Work Item X]?"`
+- **Component Interaction Target:** A standard vertical list of radio options populated with all possible work assignments for the method. The display order must be completely randomised on each render pass.
+- **Evaluation Hook:** The correct selection is the next sequential item index wrapped inside the method's cyclical array (looping back to index 0 if evaluating the terminal index item).
 
-| Starting Place / Bell | Work item      |
-| :-------------------- | :------------- |
-| 2nds                  | Dodge 3-4 Down |
-| 4ths                  | Dodge 5-6 Down |
-| 6ths                  | Long 7ths      |
-| 7ths                  | Dodge 5-6 Up   |
-| 5ths                  | Dodge 3-4 Up   |
-| 3rds                  | Make 2nds      |
+#### 6.1.3 Course and After Bells Matrix
 
-The following table specifies (i) the bell initially followed (after leaving 'rounds') and (ii) 'course' and 'after' bells (for plain a course):
+- **Abstract Prompt Construction:** Part 1: `"In a plain course, if you are on bell [Bell Number], the first bell you will follow is:"` followed by Part 2: `"... and your course and after bells are:"`
+- **Component Interaction Target:** Combines three independent dropdown selector interfaces (`<select>`).
+- Dropdown 1 lists all available working bell IDs, alongside a dedicated conditional fallback label: `"None of the above - I will lead!"`.
+- Dropdown 2 lists working bell IDs, accompanied by helper context: `"(you take off the lead)"`.
+- Dropdown 3 lists working bell IDs, accompanied by helper context: `"(takes you off the lead)"`.
 
-| Bell | Bell initially followed | Course bell | After bell |
-| :--- | :---------------------- | :---------- | :--------- |
-| 2    | None (lead!)            | 3           | 4          |
-| 3    | 4                       | 5           | 2          |
-| 4    | 1                       | 2           | 6          |
-| 5    | 6                       | 7           | 3          |
-| 6    | 3                       | 4           | 7          |
-| 7    | 5                       | 6           | 5          |
+- **Evaluation Hook:** Validation checking triggers only after a user inputs data selections across all three drop-down nodes. Fields are evaluated against the specific Method Matrix columns: `Bell initially followed`, `Course bell`, and `After bell`.
 
-The following table specifies the next piece of work to be performed according to where you last rang over the treble while hunting up. The third column specifies when you then next ring over the treble while hunting down (after performing the piece of work).
+### 6.2 'Passing the Treble' Template Classes
 
-| Meet Treble on the way up | Next work      | Meet Treble on the way down |
-| :------------------------ | :------------- | :-------------------------- |
-| 7                         | Dodge 3-4 Down | 3                           |
-| 6                         | Dodge 5-6 Down | 4                           |
-| 5                         | Long 7ths      | 5                           |
-| 4                         | Dodge 5-6 Up   | 6                           |
-| 3                         | Dodge 3-4 Up   | 7                           |
-| 2                         | Make 2nds      | 2                           |
+#### 6.2.1 Upward Hunt From Lead Pass Point
+
+- **Abstract Prompt Construction:** `"Hunting up after making 2nds, when will you pass the treble?"`
+- **Component Interaction Target:** Standardises on a `ScatteredButtons` layout model.
+- `before` config payload: `"When I am in"`
+- `after` config payload: `"place."`
+- Button labels: An array of strings representing all possible operational place steps (`"2nd"`, `"3rd"`, `"4th"`, etc.) up to the maximum grid size of the targeted method.
+
+- **Evaluation Hook:** Resolves to the maximum structural position step possible within the method (e.g., `"5th"` for Doubles).
+
+#### 6.2.2 Long Place Downward Transition
+
+- **Abstract Prompt Construction:** `"After [Long Place Name], when will you next follow the treble (while hunting down to lead)?"` _(e.g., "Long 5ths" for Doubles)._
+- **Component Interaction Target:** `ScatteredButtons` widget configuration setup identically to 6.2.1.
+- **Evaluation Hook:** Resolves directly to the numeric place step tracking immediately below the back-most placement point (e.g., `"4th"` place for Plain Bob Doubles).
+
+#### 6.2.3 Upward Visual Identification Cue
+
+- **Abstract Prompt Construction:** `"You notice you've passed the treble in [Nth] place while hunting up. What work is coming next?"`
+- **Component Interaction Target:** Uses a `ClockButtons` component displaying the ordered method work cycle.
+- **Evaluation Hook:** Maps to the `Next work` column value matching the row where the treble interaction took place during the upward hunt phase.
+
+#### 6.2.4 Downward Pass Point Determination
+
+- **Abstract Prompt Construction:** `"You've just [Work Item Action]. When will you next pass the treble while hunting down to lead?"` _(e.g., Action strings map to past-tense labels like "made 2nds", "done the 3-4 down dodge")._
+- **Component Interaction Target:** `ScatteredButtons` component.
+- _Adaptive Options Rule:_ For down-dodges, filter and include only the place numbers that exist below that dodge's position. For all other items, include all valid place options.
+
+- **Evaluation Hook:** Validates calculations against the exact terminal position values catalogued inside column 3 of the Treble Collision structural tables.
+
+---
+
+## Appendix A: Plain Bob Method Particulars
+
+### Method: Plain Bob Doubles
+
+- **Scale:** Treble + 4 working bells (2, 3, 4, 5).
+- **Cyclical Work Pattern Items:**
+
+1. Make 2nds
+2. Dodge 3-4 Down
+3. Long 5ths
+4. Dodge 3-4 Up
+
+#### Bell Starts Matrix
+
+| Starting Place / Bell | Assigned First Work |
+| --------------------- | ------------------- |
+| 2                     | Dodge 3-4 Down      |
+| 4                     | Long 5ths           |
+| 5                     | Dodge 3-4 Up        |
+| 3                     | Make 2nds           |
+
+#### Lead Lead-Out Following Tracker
+
+| Operating Bell ID | Bell Initially Followed    | Course Bell | After Bell |
+| ----------------- | -------------------------- | ----------- | ---------- |
+| 2                 | _None (Leads immediately)_ | 3           | 4          |
+| 3                 | 4                          | 5           | 2          |
+| 4                 | 1                          | 2           | 5          |
+| 5                 | 3                          | 4           | 3          |
+
+#### Treble Collision Coordinates Mapping
+
+| Meet Treble on the way up | Next work item | Meet Treble on the way down |
+| ------------------------- | -------------- | --------------------------- |
+| 5th Place                 | Dodge 3-4 Down | 3rd Place                   |
+| 4th Place                 | Long 5ths      | 4th Place                   |
+| 3rd Place                 | Dodge 3-4 Up   | 5th Place                   |
+| 2nd Place                 | Make 2nds      | 2nd Place                   |
+
+---
+
+### Method: Plain Bob Minor
+
+- **Scale:** Treble + 5 working bells (2, 3, 4, 5, 6).
+- **Cyclical Work Pattern Items:**
+
+1. Make 2nds
+2. Dodge 3-4 Down
+3. Dodge 5-6 Down
+4. Dodge 5-6 Up
+5. Dodge 3-4 Up
+
+#### Bell Starts Matrix
+
+| Starting Place / Bell | Assigned First Work |
+| --------------------- | ------------------- |
+| 2                     | Dodge 3-4 Down      |
+| 4                     | Dodge 5-6 Down      |
+| 6                     | Dodge 5-6 Up        |
+| 5                     | Dodge 3-4 Up        |
+| 3                     | Make 2nds           |
+
+#### Lead Lead-Out Following Tracker
+
+| Operating Bell ID | Bell Initially Followed    | Course Bell | After Bell |
+| ----------------- | -------------------------- | ----------- | ---------- |
+| 2                 | _None (Leads immediately)_ | 3           | 4          |
+| 3                 | 4                          | 5           | 2          |
+| 4                 | 1                          | 2           | 6          |
+| 5                 | 6                          | 6           | 3          |
+| 6                 | 3                          | 4           | 5          |
+
+#### Treble Collision Coordinates Mapping
+
+| Meet Treble on the way up | Next work item | Meet Treble on the way down |
+| ------------------------- | -------------- | --------------------------- |
+| 6th Place                 | Dodge 3-4 Down | 3rd Place                   |
+| 5th Place                 | Dodge 5-6 Down | 4th Place                   |
+| 4th Place                 | Dodge 5-6 Up   | 5th Place                   |
+| 3rd Place                 | Dodge 3-4 Up   | 6th Place                   |
+| 2nd Place                 | Make 2nds      | 2nd Place                   |
+
+---
+
+### Method: Plain Bob Triples
+
+- **Scale:** Treble + 6 working bells (2, 3, 4, 5, 6, 7).
+- **Cyclical Work Pattern Items:**
+
+1. Make 2nds
+2. Dodge 3-4 Down
+3. Dodge 5-6 Down
+4. Long 7ths
+5. Dodge 5-6 Up
+6. Dodge 3-4 Up
+
+#### Bell Starts Matrix
+
+| Starting Place / Bell | Assigned First Work |
+| --------------------- | ------------------- |
+| 2                     | Dodge 3-4 Down      |
+| 4                     | Dodge 5-6 Down      |
+| 6                     | Long 7ths           |
+| 7                     | Dodge 5-6 Up        |
+| 5                     | Dodge 3-4 Up        |
+| 3                     | Make 2nds           |
+
+#### Lead Lead-Out Following Tracker
+
+| Operating Bell ID | Bell Initially Followed    | Course Bell | After Bell |
+| ----------------- | -------------------------- | ----------- | ---------- |
+| 2                 | _None (Leads immediately)_ | 3           | 4          |
+| 3                 | 4                          | 5           | 2          |
+| 4                 | 1                          | 2           | 6          |
+| 5                 | 6                          | 7           | 3          |
+| 6                 | 3                          | 4           | 7          |
+| 7                 | 5                          | 6           | 5          |
+
+#### Treble Collision Coordinates Mapping
+
+| Meet Treble on the way up | Next work item | Meet Treble on the way down |
+| ------------------------- | -------------- | --------------------------- |
+| 7th Place                 | Dodge 3-4 Down | 3rd Place                   |
+| 6th Place                 | Dodge 5-6 Down | 4th Place                   |
+| 5th Place                 | Long 7ths      | 5th Place                   |
+| 4th Place                 | Dodge 5-6 Up   | 6th Place                   |
+| 3rd Place                 | Dodge 3-4 Up   | 7th Place                   |
+| 2nd Place                 | Make 2nds      | 2nd Place                   |
+
+---
+
+## Appendix B: Comparative Technical Implementation Approaches
+
+To implement this zero-server architectural specification, three design choices are outlined below.
+
+### Approach 1: Vanilla ECMAScript 2022 + Native Web Components
+
+Build the core widgets (`ClockButtons`, `ScatteredButtons`) using native browser Custom Elements encapsulating behaviour via Shadow DOM structures. Use raw template tags and manage global UI state with a lightweight browser-native Event Bus system or custom publisher/subscriber patterns.
+
+- **Strengths:**
+- **Absolute Zero Build Overhead:** Runs perfectly inside browsers without requiring compilation tools (`npm`, `Vite`, `Webpack`), ensuring long-term code maintainability.
+- **Minimal Footprint:** Total package download size remains under $20\text{KB}$, optimising execution performance on low-tier mobile devices or poor cellular connections.
+- **Maximum Lifecycle Longevity:** Native web components conform to strict living standards, ensuring the codebase remains functional for decades without suffering from framework deprecation.
+
+- **Weaknesses:**
+- **Verbose Boilerplate Requirements:** Handling complex state synchronisations, data bindings, and DOM reflow operations manually results in writing a significant amount of repetitive imperative code.
+- **Complex Custom Event Plumbing:** Managing nested UI updates via raw custom browser events can become difficult to trace as interaction complexity grows.
+
+### Approach 2: Reactive Single-Page Framework (Vue.js / Alpine.js)
+
+Leverage an extremely lightweight, declarative template UI engine. Use progressive enhancement frameworks via simple CDN integration scripts to manage view rendering pipelines via declarative reactive data binds.
+
+- **Strengths:**
+- **Declarative State Synchronisation:** The UI naturally updates whenever the underlying memory state changes, making it trivial to bind Leitner Box changes to view renders.
+- **Rapid UI Assembly:** Eliminates large volumes of imperative DOM patching code, keeping component logic concise, readable, and highly focused on business mechanics.
+- **Highly Extensible Component Routing:** Adding extra method variations or data tracking screens requires simply adding components to a local reactive dictionary file.
+
+- **Weaknesses:**
+- **External Asset Dependencies:** Introduces a runtime framework compilation abstraction layer, increasing initial bundle weight and script parsing overhead slightly.
+- **Tooling/Syntax Lock-in:** Future web developers working on the application must be familiar with the chosen framework's unique API conventions and directives (e.g., `v-model`, `x-data`).
+
+### Approach 3: Robust Build-Time Stack (React + TypeScript + Vite)
+
+Build a fully typed engineering workspace using TypeScript, compiling individual code components down to highly optimised browser assets via a static build pipeline (`Vite`).
+
+- **Strengths:**
+- **Compile-Time Code Guarantees:** TypeScript prevents spelling errors or logic type mismatches between complex change-ringing mathematical matrices and component parameters before code ever reaches a browser.
+- **Component Ecosystem Support:** Provides access to thousands of ready-made Material Design 3 React component packages, accelerating development of menus, dialogs, and sliders.
+
+- **Weaknesses:**
+- **Heavy Build Dependencies:** Introduces long-term maintenance overhead via a deep stack of package development tools (`node_modules`), creating ongoing security patch management requirements.
+- **Over-Engineered Architecture:** Generating complex build output arrays and loading bulky framework bundles can feel excessive for a static application targeting a small number of core local screens.
+
+### Gemini's opinion
+
+When evaluating these approaches specifically for the **Plain Bob Flashcards** project, there is a very clear **stand-out winner** and a **stand-out loser**.
+
+Because this is a static, zero-server application designed to run out of `localStorage`, the ideal architecture should prioritise **low maintenance overhead** (so the code doesn't break due to toolchain updates in three years) and **easy state reactivity** (because a quiz app with moving boxes and custom widgets requires constantly syncing data to the screen).
+
+Here is the scoring breakdown and why the standings fall the way they do:
+
+---
+
+### 🥇 The Winner: Approach 2 (Reactive Framework - Vue/Alpine)
+
+**Score: 9 / 10**
+
+This is the sweet spot for a single-page flashcard app.
+
+- **Why it wins:** A Spaced Repetition (Leitner) engine is fundamentally about state transitions. When a user clicks a button, a question moves from Box 1 to Box 2, a progress bar ticks up, and a widget changes color. Managing this manually in vanilla JS is a headache of boilerplate DOM manipulation. A lightweight reactive framework handles this data-to-view synchronisation automatically.
+- **The "Niche App" Advantage:** Using a minimal framework like Alpine.js or a progressive implementation of Vue allows you to write declarative code without committing to a heavy, fragile build pipeline. You get modern UI reactivity with almost zero structural complexity.
+
+### 🥈 The Solid Runner-Up: Approach 1 (Vanilla ECMAScript + Web Components)
+
+**Score: 7 / 10**
+
+If the absolute highest priority is that the application must still compile and run flawlessly 15 years from now without ever updating a single tool, vanilla JavaScript is the choice.
+
+- **Why it's strong:** Zero dependency rot. There are no packages to deprecate, no build tools to break, and no security vulnerabilities to patch. It is incredibly lightweight.
+- **Why it missed first place:** Building custom interactive layout widgets like the `ClockButtons` (with precise radial positioning and dynamic state coloring) means you have to write a lot of imperative, low-level DOM patching code. It will take longer to build and be more tedious to modify later if you want to add new layout styles.
+
+### ❌ The Loser: Approach 3 (React + TypeScript + Vite)
+
+**Score: 4 / 10**
+
+While this is the standard "industry default" for commercial web development, it is a massive mistake for a small, offline-first hobby project.
+
+- **Why it loses (Over-engineering):** Pulling in a heavy asset pipeline (`node_modules`), package managers, and a compilation step for a 3-view flashcard app is excessive.
+- **The Dependency Rot Trap:** If you build this in React/Vite today and don't touch the codebase for two years, the next time you try to run `npm install` to make a small change to a method table, half the dependencies will be deprecated, the build tool will throw errors, and you'll spend more time fixing configuration files than writing code. TypeScript provides great guardrails for the change-ringing matrices, but it isn't worth the infrastructure penalty here.
+
+---
+
+### Summary Verdict
+
+Go with **Approach 2** (specifically using something lightweight like Alpine.js or a simple single-file Vue setup). It gives you the reactive superpowers needed to build the interactive widgets and Leitner boxes seamlessly, without the heavy maintenance baggage of a modern commercial build stack.
 
 <!-- End -->
