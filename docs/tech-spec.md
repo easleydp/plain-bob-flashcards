@@ -42,10 +42,6 @@ After selecting one of the supported Plain Bob methods, the web app (probably an
 
 The user's recent performance is tracked. Question that appear to have a greater than average failure rate are repeated more frequently. Conversely, questions the user appears to have no trouble with are repeated only occasionally.
 
-The library will display the current time as text on the surface of a continuously rotating 3D cylinder. The text will be in British or American English (configurable). As well as the text, the surface of the cylinder will feature markings for minutes and 5-second intervals. A red static index line running horizontally along the center of the clock (overlapping the markers but interrupted by the text) will create an effect analogous to a second hand.
-
-The rendering will fill the target `div` and adapt to its dimensions. Typical dimensions of the `div` are 3:1 (so the cylinder length will typically be 3 times the cylinder diameter).
-
 ---
 
 ## 2. General Requirements
@@ -77,7 +73,7 @@ The component's initialisation method is supplied with a list of button labels (
 The first item in the list is for the first button and this is always positioned at the 12 o-clock position.
 The second and subsequent items are for the remaining buttons which are positioned around the circle in a clockwise direction.
 
-When a button is clicked an 'event' (implementation details TBD) is emitted. The event specified the text and the button's index (starting at zero).
+When a button is clicked an 'event' should be emitted. Use standard JavaScript CustomEvents (detail payload containing index and text) or accept a callback function during initialization.
 
 The component has an API that allows the client code to highlight a button (specified by text or index) as either 'correct' (e.g. button goes green) or 'incorrect' (e.g. button goes red). Once a button is marked as 'incorrect' it is disabled (although the text should remain just as visible as before).
 
@@ -88,6 +84,8 @@ Implementation note: ./src/ClockButtons-demo.html provides some sample component
 A number of questions employ a 'ScatteredButtons' widget. This is a reusable interactive component consisting of between 2 to 6 buttons scattered randomly in a cluster.
 
 The buttons are positioned in an apparently random jumble. Each button's text will never be more than 6 characters. The buttons should be rendered in a tight cluster. They can be slightly overlapping as long as the button text is never obscured. Each button should have a random rotation, though never exceeding +/- 30 degrees deviation from the horizontal. The overall effect should be as if some cards have been tossed in to the air and allowed to land randomly on the floor (though with all the text fortuitously still readable!)
+
+Implementation note: To avoid excessive overlapping: Use a basic collision-avoidance boundary or a grid-jitter approach where buttons are assigned to a loose invisible grid and randomly offset/rotated within their respective cells.
 
 The component's initialisation method is supplied with:
 
@@ -102,7 +100,7 @@ The ScatteredButtons widget would then follow, initialised with:
 
 > Aside (Instructional design principle): <br>This widget is intended for questions where we'd rather the learner tried to simply pluck the correct answer from their rote learned memory, rather than work their way methodically through a list considering each option in turn.
 
-When a button is clicked an 'event' (implementation details TBD) is emitted. The event specified the text and the button's index w.r.t. the originally supplied array (starting at zero).
+When a button is clicked an 'event' should be emitted. Use standard JavaScript CustomEvents (detail payload specifying the text and the button's index w.r.t. the originally supplied array) or accept a callback function during initialization.
 
 The component has an API that allows the client code to highlight a button (specified by text or index) as either 'correct' (e.g. button goes green) or 'incorrect' (e.g. button goes red). Once a button is marked as 'incorrect' it is disabled (although the text should remain just as visible as before).
 
@@ -110,7 +108,14 @@ Implementation note: ./src/ScatteredButtons-demo.html provides some sample compo
 
 **4.3. Spaced Repetition**
 
-TODO: Insert details here of how a Flashcards 'spaced repetition' technique should be used, incorporating increasing time intervals between each review of a question in order to harness the 'spacing effect'. Consider using the Leitner system.
+TODO: Insert details here of how a Flashcards 'spaced repetition' technique should be used, incorporating increasing time intervals between each review of a question in order to harness the 'spacing effect'.
+
+Possible approach:
+
+- Use the Leitner system.
+- Define 3 to 5 virtual "boxes" in the JSON schema.
+- Specify how a correct answer promotes a card to the next box, and how an incorrect answer demotes it back to Box 1.
+- Define the pseudo-random selection weightings (e.g., Box 1 cards have an 80% chance of being picked, Box 2 has 15%, Box 3 has 5%).
 
 **4.4. Performance Tracking**
 
@@ -165,11 +170,11 @@ From top to bottom:
 
 1. the user's stats for this session:
 
-"Congratulations! You spent N minutes learning <method name> during this session. You answered M distinct questions - P right first time and Q needing re-attempts. Come back soon for more practice!"
+"Congratulations! You spent N minutes learning `<method name>` during this session. You answered M distinct questions - P right first time and Q needing re-attempts. Come back soon for more practice!"
 
-Special override message, to be used if the tracking data indicates that every question for the selected method has been answered successfull
+Special override message, to be used if the tracking data indicates that every question for the selected method has been answered successfully: "Congratulations! You have mastered every aspect of a plain course of `<method name>`. You're ready for the tower!"
 
-2. A link back to the Start screen - "Start again". (Use the current best practices guidelines for Web UI to decide whether this should be a link or a button.) If the user selects this option then the effect should be as if they close and restart the app (i.e. new session commences).
+2. A link back to the Start screen - "Start again". (Implementation note: Regardless of what the 'link' looks like, use a `<button>`. Modern A11y (accessibility) and semantic HTML guidelines state that links (`<a>`) are for navigating to a new URL/document, whereas buttons (`<button>`) are for triggering an action or state change on the current page.) If the user selects this option then the effect should be as if they close and restart the app (i.e. new session commences).
 
 ---
 
@@ -188,27 +193,27 @@ Unless specified otherwise, each question description (such as the one titled "F
 
 **6.1.1. First piece of work**
 
-Question text: "Starting in <Nth> place, what is the first piece of work?"
+Question text: "Starting in `<Nth>` place, what is the first piece of work?"
 
 Beneath the question text, render the ClockButtons widget initialised with the work items relating to the selected PB method (in the cyclical order given in Appendix A). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
 
-Concrete examples: For Plain Bob Doubles, "<Nth>" in the question text would be one of: 2nd, 3rd, 4th, 5th.
+Concrete examples: For Plain Bob Doubles, "`<Nth>`" in the question text would be one of: 2nd, 3rd, 4th, 5th.
 And the respective correct answer (first piece of work) would be:
 3-4 Down, Long 5ths, 3-4 Up, Make 2nds
 
 **6.1.2. Next work**
 
-Question text: "In a plain course, what is the next work after <work item>?"
+Question text: "In a plain course, what is the next work after `<work item>`?"
 
 Beneath the question text, render a vertically oriented list of radio button options, one per possible answer. The order of these options should be randomised. If the user selects the correct answer, the option is highlighted as correct and the Next question button is displayed. Otherwise, the option is highlighted as incorrect, deselected and disabled, and a "Try again" toast message is briefly displayed.
 
-Concrete example: For Plain Bob Doubles, "<work item>" in the question text might be "3-4 Up". In which case the correct answer would be "Make 2nds".
+Concrete example: For Plain Bob Doubles, "`<work item>`" in the question text might be "3-4 Up". In which case the correct answer would be "Make 2nds".
 
 **6.1.3. Course and After bells**
 
-Question text: "In a plain course, if you are on bell <bell number> the first bell you will follow is:"
+Question text: "In a plain course, if you are on bell `<bell number>` the first bell you will follow is:"
 
-Beneath this question text, render a drop-down list (DDL) containing all the other working bell numbers (in order), plus a special option: "None of the above - I will lead!". (That special option is always the correct answer when <bell number> is 2.)
+Beneath this question text, render a drop-down list (DDL) containing all the other working bell numbers (in order), plus a special option: "None of the above - I will lead!". (That special option is always the correct answer when `<bell number>` is 2.)
 
 Beneath this first DDL, further question text: "... and your **course** and **after** bells are:
 
@@ -216,7 +221,7 @@ Beneath this question text, render a two vertically aligned DDLs containing all 
 
 Once the user has chosen a bell number for all three DDLs: those that are correct are highlighted as correct; if all are correct the Next question button is displayed. Otherwise, the incorrect DDLs are highlighted as incorrect and a "Try again" toast message is briefly displayed. On making a subsequent attempt for a particular DDL, the 'incorrect' highlight is removed when they first open the DDL, and then potentially re-applied if they get it wrong again. When all are correct the Next question button is displayed
 
-Concrete example: For Plain Bob Doubles, if "<bell number>" in the question text is 3, then the first bell you will follow is 4, course bell is 5, after bell is 2.
+Concrete example: For Plain Bob Doubles, if "`<bell number>`" in the question text is 3, then the first bell you will follow is 4, course bell is 5, after bell is 2.
 
 **6.2. 'Passing the Treble' related questions**
 
@@ -230,30 +235,30 @@ Only one instance of this question is needed per PB method.
 
 Concrete example: For Plain Bob Doubles the correct answer would be "5th".
 
-**6.2.3. Passing treble after a long place**
+**6.2.2. Passing treble after a long place**
 
-Question text: "After <long place name>, when will you next follow the treble (while hunting down to lead)?"
+Question text: "After `<long place name>`, when will you next follow the treble (while hunting down to lead)?"
 ('long place name' means e.g. "Long 5ths" for PB Doubles, "Long 7ths" for PB Triples.)
 
 Beneath the question text, render the ScatteredButtons widget initialised with `{before: "When I am in", after: "place."}` and with all the possible places (so, "4th" to "2nd" for PB Doubles, "6th" to "2nd" for PB Triples). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
 
 Only one instance of this question is needed per PB method.
 
-Concrete example: For Plain Bob Doubles, "<long place name>" in the question text would be "Long 5ths", and the correct answer would be "4th".
+Concrete example: For Plain Bob Doubles, "`<long place name>`" in the question text would be "Long 5ths", and the correct answer would be "4th".
 
-**6.2.1. Noticing where you pass treble on the way up**
+**6.2.3. Noticing where you pass treble on the way up**
 
-Question text: "You notice you've passed the treble in <Nth> place while hunting up. What work is coming next?
+Question text: "You notice you've passed the treble in `<Nth>` place while hunting up. What work is coming next?
 
 Beneath the question text, render the ClockButtons widget initialised with the work items relating to the selected PB method (in the cyclical order given in Appendix A). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
 
-Concrete examples: For Plain Bob Doubles, "<Nth>" in the question text would be one of: 5th, 4th, 3rd, 2nd.
+Concrete examples: For Plain Bob Doubles, "`<Nth>`" in the question text would be one of: 5th, 4th, 3rd, 2nd.
 And the respective correct answer (next work) would be:
 3-4 Down, Long 5ths, 3-4 Up, Make 2nds
 
-**6.2.2. Passing treble on the way down**
+**6.2.4. Passing treble on the way down**
 
-Question text: "You've just <work item action>. When will you next pass the treble while hunting down to lead?" where <work item action> is one of (e.g. for PB Doubles): "made 2nds", "done the 3-4 down dodge", "done long 5ths", "done the 3-4 up dodge"
+Question text: "You've just `<work item action>`. When will you next pass the treble while hunting down to lead?" where `<work item action>` is one of (e.g. for PB Doubles): "made 2nds", "done the 3-4 down dodge", "done long 5ths", "done the 3-4 up dodge"
 
 Beneath the question text, render the ScatteredButtons widget initialised with `{before: "When I am in", after: "place."}` and with all the possible places that make sense for the given question. So, for down dodges, only those places remaining beneath the dodge (e.g. after the 3-4 down dodge in PB Doubles, the only possible answers are 3rds and 2nds). For all other work items (making 2nds, up dodges, long place at the back) - all positions are valid (e.g. for PB Doubles: 5ths, 4ths, 3rds and 2nds). If the user clicks the correct work item button, the button is set as correct and the Next question button is displayed. Otherwise, the button is marked as incorrect and a "Try again" toast message is briefly displayed.
 
@@ -278,12 +283,12 @@ Rung on 5 bells (treble plus 4 inside bells) plus an optional cover. The 4 insid
 
 The following table specifies the 'starts', i.e. the first item of work for each inner/working bell:
 
-| Bell | Work item      |
-| :--- | :------------- |
-| 2nds | Dodge 3-4 Down |
-| 4ths | Long 5ths      |
-| 5ths | Dodge 3-4 Up   |
-| 3rds | Make 2nds      |
+| Starting Place / Bell | Work item      |
+| :-------------------- | :------------- |
+| 2nds                  | Dodge 3-4 Down |
+| 4ths                  | Long 5ths      |
+| 5ths                  | Dodge 3-4 Up   |
+| 3rds                  | Make 2nds      |
 
 The following table specifies (i) the bell initially followed (after leaving 'rounds') and (ii) 'course' and 'after' bells (for plain a course):
 
@@ -315,13 +320,13 @@ Rung on 6 bells (treble plus 5 inside bells). The 5 inside bells cycle through t
 
 The following table specifies the 'starts', i.e. the first item of work for each inner/working bell:
 
-| Bell | Work item      |
-| :--- | :------------- |
-| 2nds | Dodge 3-4 Down |
-| 4ths | Dodge 5-6 Down |
-| 6ths | Dodge 5-6 Up   |
-| 5ths | Dodge 3-4 Up   |
-| 3rds | Make 2nds      |
+| Starting Place / Bell | Work item      |
+| :-------------------- | :------------- |
+| 2nds                  | Dodge 3-4 Down |
+| 4ths                  | Dodge 5-6 Down |
+| 6ths                  | Dodge 5-6 Up   |
+| 5ths                  | Dodge 3-4 Up   |
+| 3rds                  | Make 2nds      |
 
 The following table specifies (i) the bell initially followed (after leaving 'rounds') and (ii) 'course' and 'after' bells (for plain a course):
 
@@ -356,14 +361,14 @@ Rung on 7 bells (treble plus 6 inside bells) plus an optional cover. The 6 insid
 
 The following table specifies the 'starts', i.e. the first item of work for each inner/working bell:
 
-| Bell | Work item      |
-| :--- | :------------- |
-| 2nds | Dodge 3-4 Down |
-| 4ths | Dodge 5-6 Down |
-| 6ths | Long 7ths      |
-| 7ths | Dodge 5-6 Up   |
-| 5ths | Dodge 3-4 Up   |
-| 3rds | Make 2nds      |
+| Starting Place / Bell | Work item      |
+| :-------------------- | :------------- |
+| 2nds                  | Dodge 3-4 Down |
+| 4ths                  | Dodge 5-6 Down |
+| 6ths                  | Long 7ths      |
+| 7ths                  | Dodge 5-6 Up   |
+| 5ths                  | Dodge 3-4 Up   |
+| 3rds                  | Make 2nds      |
 
 The following table specifies (i) the bell initially followed (after leaving 'rounds') and (ii) 'course' and 'after' bells (for plain a course):
 
