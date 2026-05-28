@@ -1,97 +1,86 @@
 <script setup>
-import { ref } from 'vue';
-import ClockButtons from './components/ClockButtons.vue';
-import ScatteredButtons from './components/ScatteredButtons.vue';
+import { ref, onMounted } from 'vue';
+import { SRSEngine } from './state/srs.js';
+import { METHODS } from './engine/methods.js';
+import StartScreen from './views/StartScreen.vue';
+import QuestionScreen from './views/QuestionScreen.vue';
+import SummaryScreen from './views/SummaryScreen.vue';
 
-const clockItems = ['Make 2nds', 'Dodge 3-4 Down', 'Long 5ths', 'Dodge 3-4 Up'];
-const scatteredItems = ['2nd', '3rd', '4th', '5th', '6th'];
+const VIEW = {
+  START: 'START',
+  QUESTION: 'QUESTION',
+  SUMMARY: 'SUMMARY'
+};
 
-const clockCorrect = ref(null);
-const clockIncorrect = ref([]);
+const currentView = ref(VIEW.START);
+const srs = ref(new SRSEngine());
 
-const scatteredCorrect = ref(null);
-const scatteredIncorrect = ref([]);
+const sessionConfig = ref({
+  method: 'DOUBLES',
+  focus: ''
+});
 
-function handleClockSelection({ detail }) {
-  console.log('Clock selection:', detail);
-  if (detail.label === 'Make 2nds') {
-    clockCorrect.value = detail.label;
-  } else {
-    clockIncorrect.value.push(detail.label);
-  }
+const sessionStats = ref(null);
+const mastery = ref(0);
+
+function handleStartSession(config) {
+  sessionConfig.value = config;
+  currentView.value = VIEW.QUESTION;
 }
 
-function handleScatteredSelection({ detail }) {
-  console.log('Scattered selection:', detail);
-  if (detail.label === '5th') {
-    scatteredCorrect.value = detail.label;
-  } else {
-    scatteredIncorrect.value.push(detail.label);
-  }
+function handleFinishSession(stats) {
+  sessionStats.value = stats;
+  mastery.value = srs.value.getMastery(sessionConfig.value.method);
+  currentView.value = VIEW.SUMMARY;
 }
 
-function reset() {
-  clockCorrect.value = null;
-  clockIncorrect.value = [];
-  scatteredCorrect.value = null;
-  scatteredIncorrect.value = [];
+function handleRestart() {
+  currentView.value = VIEW.START;
 }
 </script>
 
 <template>
   <div id="app">
-    <header>
-      <h1>Component Demo</h1>
-      <button class="md-button md-button--filled" @click="reset">Reset States</button>
-    </header>
-
-    <main>
-      <section>
-        <h2>ClockButtons Widget</h2>
-        <p>Goal: Select "Make 2nds"</p>
-        <ClockButtons 
-          :items="clockItems" 
-          :correct-identifier="clockCorrect"
-          :incorrect-identifiers="clockIncorrect"
-          @clock-button-selection="handleClockSelection"
-        />
-      </section>
-
-      <hr />
-
-      <section>
-        <h2>ScatteredButtons Widget</h2>
-        <p>Goal: Select "5th"</p>
-        <ScatteredButtons 
-          :items="scatteredItems"
-          before="When I am in"
-          after="place."
-          :correct-identifier="scatteredCorrect"
-          :incorrect-identifiers="scatteredIncorrect"
-          @clock-button-selection="handleScatteredSelection"
-        />
-      </section>
-    </main>
+    <Transition name="fade" mode="out-in">
+      <StartScreen 
+        v-if="currentView === VIEW.START" 
+        :srs="srs" 
+        @start-session="handleStartSession" 
+      />
+      
+      <QuestionScreen 
+        v-else-if="currentView === VIEW.QUESTION" 
+        :method-key="sessionConfig.method"
+        :focus-area="sessionConfig.focus"
+        @finish-session="handleFinishSession"
+      />
+      
+      <SummaryScreen 
+        v-else-if="currentView === VIEW.SUMMARY" 
+        :session-stats="sessionStats"
+        :mastery="mastery"
+        :method-name="METHODS[sessionConfig.method].name"
+        @restart="handleRestart"
+      />
+    </Transition>
   </div>
 </template>
 
 <style>
-header {
-  margin-bottom: 2rem;
-  text-align: center;
+/* Transition Effects */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-section {
-  padding: 1rem;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
-h2 {
-  color: var(--md-sys-color-primary);
-}
-
-hr {
-  border: 0;
-  border-top: 1px solid var(--md-sys-color-outline);
-  margin: 2rem 0;
+/* Ensure MD3 layout fills screen */
+body {
+  background-color: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
 }
 </style>
