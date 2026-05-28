@@ -52,6 +52,7 @@ function handleRestart() {
         v-else-if="currentView === VIEW.QUESTION" 
         :method-key="sessionConfig.method"
         :focus-area="sessionConfig.focus"
+        :srs="srs"
         @finish-session="handleFinishSession"
       />
       

@@ -252,7 +252,7 @@ Questions are generated procedurally using the method frameworks listed in Appen
 - Dropdown 2 lists working bell IDs, accompanied by helper context: `"(you take off the lead)"`.
 - Dropdown 3 lists working bell IDs, accompanied by helper context: `"(takes you off the lead)"`.
 
-- **Evaluation Hook:** Validation checking triggers only after a user inputs data selections across all three drop-down nodes. Fields are evaluated against the specific Method Matrix columns: `Bell initially followed`, `Course bell`, and `After bell`.
+- **Evaluation Hook:** Validation checking triggers only after a user inputs data selections across all three drop-down nodes. Fields are evaluated against the specific Method Matrix columns: `Bell initially followed`, `Course bell`, and `After bell`. To assist the user in working towards the correct combination, any individual dropdown that is correct should be visually highlighted (e.g., green background) immediately upon validation, even if the overall triplet is not yet fully correct.
 
 ### 6.2 'Passing the Treble' Template Classes
 
