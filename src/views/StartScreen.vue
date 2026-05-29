@@ -35,9 +35,9 @@ function handleStart() {
     </header>
 
     <div class="config-card">
-      <section class="config-section">
-        <h2 class="section-title">Select Method</h2>
-        <div class="radio-group">
+      <section class="config-section" role="group" aria-labelledby="method-title">
+        <h2 id="method-title" class="section-title">Select Method</h2>
+        <div class="radio-group" role="radiogroup">
           <label v-for="(method, key) in METHODS" :key="key" class="radio-item" :class="{ selected: selectedMethod === key }">
             <input type="radio" :value="key" v-model="selectedMethod" name="method" />
             <span class="label-text">{{ method.name }}</span>
@@ -45,9 +45,9 @@ function handleStart() {
         </div>
       </section>
 
-      <section class="config-section">
-        <h2 class="section-title">Focus Scope</h2>
-        <div class="radio-group">
+      <section class="config-section" role="group" aria-labelledby="focus-title">
+        <h2 id="focus-title" class="section-title">Focus Scope</h2>
+        <div class="radio-group" role="radiogroup">
           <label v-for="(label, key) in FOCUS_AREAS" :key="key" class="radio-item" :class="{ selected: selectedFocus === label }">
             <input type="radio" :value="label" v-model="selectedFocus" name="focus" />
             <span class="label-text">{{ label }}</span>
@@ -90,6 +90,7 @@ function handleStart() {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  box-shadow: var(--md-sys-shadow-level1);
 }
 
 .config-section {
@@ -117,7 +118,7 @@ function handleStart() {
   border-radius: 12px;
   background-color: var(--md-sys-color-surface);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
   border: 1px solid transparent;
 }
 
@@ -128,10 +129,19 @@ function handleStart() {
 .radio-item.selected {
   background-color: var(--md-sys-color-primary-container);
   border-color: var(--md-sys-color-primary);
+  box-shadow: var(--md-sys-shadow-level1);
+}
+
+.radio-item:focus-within {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 .radio-item input {
   margin-right: 1rem;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
 }
 
 .label-text {

@@ -207,7 +207,7 @@ const workingBells = computed(() => METHODS[props.methodKey].workingBells);
     </Transition>
 
     <Transition name="fade">
-      <div v-if="showToast" class="toast">
+      <div v-if="showToast" class="toast" role="alert" aria-live="assertive">
         {{ toastMessage }}
       </div>
     </Transition>

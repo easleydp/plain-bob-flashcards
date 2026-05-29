@@ -35,7 +35,7 @@ function isBtnDisabled(label) {
 </script>
 
 <template>
-  <div class="radio-list">
+  <div class="radio-list" role="group" aria-label="Work assignment options">
     <button
       v-for="label in options"
       :key="label"

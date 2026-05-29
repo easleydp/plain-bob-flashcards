@@ -80,6 +80,8 @@ function isBtnDisabled(label) {
     <div 
       class="scattered-buttons-container" 
       :style="{ width: (gridCols * cellWidth) + 'px', height: (gridRows * cellHeight) + 'px' }"
+      role="group"
+      aria-label="Selection of place options"
     >
       <button
         v-for="item in jitteredItems"

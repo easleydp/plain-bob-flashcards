@@ -75,10 +75,11 @@ defineExpose({ reset });
 </script>
 
 <template>
-  <div class="triple-select" :class="{ 'is-completed': isCompleted }">
+  <div class="triple-select" :class="{ 'is-completed': isCompleted }" role="group" aria-label="Course and after bells selection">
     <div class="select-field">
-      <label>Bell initially followed:</label>
+      <label for="followed-select">Bell initially followed:</label>
       <select 
+        id="followed-select"
         v-model="followed" 
         :disabled="isCompleted"
         :class="{ 'is-correct': followedCorrect && hasValidatedAtLeastOnce }"
@@ -88,11 +89,12 @@ defineExpose({ reset });
       </select>
     </div>
 
-    <p v-if="promptPart2" class="prompt-part2">{{ promptPart2 }}</p>
+    <p v-if="promptPart2" class="prompt-part2" aria-hidden="true">{{ promptPart2 }}</p>
 
     <div class="select-field">
-      <label>Course bell (you take off the lead):</label>
+      <label for="course-select">Course bell (you take off the lead):</label>
       <select 
+        id="course-select"
         v-model="course" 
         :disabled="isCompleted"
         :class="{ 'is-correct': courseCorrect && hasValidatedAtLeastOnce }"
@@ -103,8 +105,9 @@ defineExpose({ reset });
     </div>
 
     <div class="select-field">
-      <label>After bell (takes you off the lead):</label>
+      <label for="after-select">After bell (takes you off the lead):</label>
       <select 
+        id="after-select"
         v-model="after" 
         :disabled="isCompleted"
         :class="{ 'is-correct': afterCorrect && hasValidatedAtLeastOnce }"
@@ -154,6 +157,12 @@ select {
   color: var(--md-sys-color-on-surface);
   font-size: 1rem;
   transition: background-color 0.2s, border-color 0.2s;
+  cursor: pointer;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 select.is-correct {

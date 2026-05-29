@@ -49,6 +49,9 @@
   /* Shadows */
   --md-sys-shadow-level1: 0px 1px 3px 1px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
   --md-sys-shadow-level2: 0px 2px 6px 2px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
+  --md-sys-shadow-level3: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --md-sys-shadow-level4: 0px 2px 3px 0px rgba(0, 0, 0, 0.3), 0px 6px 10px 4px rgba(0, 0, 0, 0.15);
+  --md-sys-shadow-level5: 0px 4px 4px 0px rgba(0, 0, 0, 0.3), 0px 8px 12px 6px rgba(0, 0, 0, 0.15);
 
   /* Touch Targets */
   --md-sys-touch-target-size: 48px;
@@ -59,6 +62,7 @@
   font-family: var(--md-sys-typescale-body-font);
   font-size: var(--md-sys-typescale-body-size);
   line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -85,6 +89,8 @@
     --md-sys-color-on-success: #0C3900;
     --md-sys-color-success-container: #235109;
     --md-sys-color-on-success-container: #B8F397;
+
+    --md-sys-shadow-level1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
   }
 }
 
@@ -92,13 +98,14 @@ body {
   margin: 0;
   display: flex;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #app {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 600px; /* Centered layout for readability, but responsive */
+  max-width: 600px;
   margin: 0 auto;
   padding: 16px;
   box-sizing: border-box;
@@ -117,17 +124,29 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, box-shadow 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
   user-select: none;
+  outline: none;
+}
+
+.md-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.md-button:active {
+  transform: scale(0.98);
 }
 
 .md-button--filled {
   background-color: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-shadow-level1);
 }
 
 .md-button--filled:hover {
-  box-shadow: var(--md-sys-shadow-level1);
+  box-shadow: var(--md-sys-shadow-level2);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08));
 }
 
 .md-button--tonal {
@@ -135,10 +154,19 @@ body {
   color: var(--md-sys-color-on-secondary-container);
 }
 
+.md-button--tonal:hover {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.04));
+  box-shadow: var(--md-sys-shadow-level1);
+}
+
 .md-button--outline {
   background-color: transparent;
   color: var(--md-sys-color-primary);
   border: 1px solid var(--md-sys-color-outline);
+}
+
+.md-button--outline:hover {
+  background-color: rgba(103, 80, 164, 0.08);
 }
 
 .md-button:disabled {

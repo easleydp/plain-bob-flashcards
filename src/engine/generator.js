@@ -136,10 +136,10 @@ export class QuestionGenerator {
         .replace('Dodge', 'done the')
         .replace('Long', 'done');
       
-      const isDodge = collision.nextWork.includes('Dodge');
+      const isDownDodge = collision.nextWork.includes('Dodge') && collision.nextWork.includes('Down');
       let options = this.getPlaceOptions(method);
       
-      if (isDodge) {
+      if (isDownDodge) {
         // Filter options below dodge position
         const dodgeMatch = collision.nextWork.match(/(\d)-(\d)/);
         if (dodgeMatch) {

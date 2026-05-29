@@ -75,7 +75,12 @@ function isBtnDisabled(label) {
 </script>
 
 <template>
-  <div class="clock-buttons-container" :style="{ width: containerSize + 'px', height: containerSize + 'px' }">
+  <div 
+    class="clock-buttons-container" 
+    :style="{ width: containerSize + 'px', height: containerSize + 'px' }"
+    role="group"
+    aria-label="Circle of work items"
+  >
     <svg class="clock-arcs" :width="containerSize" :height="containerSize">
       <defs>
         <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
