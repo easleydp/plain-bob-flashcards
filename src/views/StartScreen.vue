@@ -31,7 +31,7 @@ function handleStart() {
   <div class="start-screen">
     <header class="hero">
       <h1 class="md-typescale-h1">Plain Bob Flashcards</h1>
-      <p class="md-typescale-body-large">Master the art of change ringing.</p>
+      <p class="md-typescale-body-large">Memorise the details of Plain Bob.</p>
     </header>
 
     <div class="config-card">

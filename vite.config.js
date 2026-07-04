@@ -14,7 +14,7 @@ export default defineConfig({
         name: "Plain Bob Flashcards",
         short_name: "Plain Bob",
         description:
-          "Master the art of change ringing with Plain Bob flashcards.",
+          "Memorise the details of Plain Bob with Plain Bob Flashcards.",
         theme_color: "#6750A4",
         icons: [
           {
