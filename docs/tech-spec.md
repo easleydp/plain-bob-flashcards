@@ -288,6 +288,23 @@ Questions are generated procedurally using the method frameworks listed in Appen
 
 ---
 
+## 7. Debug support features
+
+### 7.1 Hash-based deep linking
+
+To support debugging, the currently selected Plain Bob method and the currently presented question ID shall be encoded in a URL hash fragment.
+
+- Proposed URL Schema
+
+  - Start Screen: #/ or empty
+  - Question Screen: #/<method_key>/<question_id>
+
+### 7.2 Sequential (Non-Random) Debugging Mode
+
+As a supplementary debugging feature, to test the correctness of every procedurally generated question in order, random selection can be disabled entirely when a specific `?sequential` query parameter is active.
+
+---
+
 ## Appendix A: Plain Bob Method Particulars
 
 ### Method: Plain Bob Doubles

@@ -9,7 +9,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "icons.svg"],
+      includeAssets: ["icons.svg", "favicon.svg"],
       manifest: {
         name: "Plain Bob Flashcards",
         short_name: "Plain Bob",
