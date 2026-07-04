@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { SRSEngine } from './state/srs.js';
 import { METHODS } from './engine/methods.js';
 import StartScreen from './views/StartScreen.vue';
@@ -23,9 +23,40 @@ const sessionConfig = ref({
 const sessionStats = ref(null);
 const mastery = ref(0);
 
+function parseHash() {
+  const hash = window.location.hash;
+  if (!hash || hash === '#/' || hash === '#') {
+    currentView.value = VIEW.START;
+    return;
+  }
+
+  // Expecting format: #/METHOD_KEY or #/METHOD_KEY/question_id
+  const parts = hash.replace(/^#\/?/, '').split('/');
+  const methodKey = parts[0].toUpperCase();
+
+  if (METHODS[methodKey]) {
+    sessionConfig.value = {
+      method: methodKey,
+      focus: sessionConfig.value.focus || 'Everything!'
+    };
+    currentView.value = VIEW.QUESTION;
+  } else {
+    currentView.value = VIEW.START;
+  }
+}
+
+onMounted(() => {
+  parseHash();
+  window.addEventListener('hashchange', parseHash);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('hashchange', parseHash);
+});
+
 function handleStartSession(config) {
   sessionConfig.value = config;
-  currentView.value = VIEW.QUESTION;
+  window.location.hash = `#/${config.method}`;
 }
 
 function handleFinishSession(stats) {
@@ -35,7 +66,7 @@ function handleFinishSession(stats) {
 }
 
 function handleRestart() {
-  currentView.value = VIEW.START;
+  window.location.hash = '#/';
 }
 </script>
 
@@ -50,6 +81,7 @@ function handleRestart() {
       
       <QuestionScreen 
         v-else-if="currentView === VIEW.QUESTION" 
+        :key="sessionConfig.method"
         :method-key="sessionConfig.method"
         :focus-area="sessionConfig.focus"
         :srs="srs"

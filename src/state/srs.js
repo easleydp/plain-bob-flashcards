@@ -1,11 +1,11 @@
 /**
- * Spaced Repetition Engine (Leitner Framework)
+ * SRS (Spaced Repetition System) Engine (a.k.a. Leitner Framework)
  */
 
 export const BOX_PROBABILITIES = [70, 20, 8, 2];
 
 export class SRSEngine {
-  constructor(storageKey = 'plain-bob-flashcards-state') {
+  constructor(storageKey = "plain-bob-flashcards-state") {
     this.storageKey = storageKey;
     this.state = this.loadState();
   }
@@ -16,15 +16,15 @@ export class SRSEngine {
       try {
         return JSON.parse(saved);
       } catch (e) {
-        console.error('Failed to parse SRS state', e);
+        console.error("Failed to parse SRS state", e);
       }
     }
     return {
       settings: {
-        lastSelectedMethod: 'DOUBLES',
-        lastSelectedFocus: 'Everything!'
+        lastSelectedMethod: "DOUBLES",
+        lastSelectedFocus: "Everything!",
       },
-      tracking: {}
+      tracking: {},
     };
   }
 
@@ -35,7 +35,7 @@ export class SRSEngine {
   getTracking(methodKey) {
     if (!this.state.tracking[methodKey]) {
       this.state.tracking[methodKey] = {
-        questions: []
+        questions: [],
       };
     }
     return this.state.tracking[methodKey];
@@ -43,14 +43,14 @@ export class SRSEngine {
 
   registerQuestions(methodKey, questions) {
     const tracking = this.getTracking(methodKey);
-    questions.forEach(q => {
-      const existing = tracking.questions.find(t => t.id === q.id);
+    questions.forEach((q) => {
+      const existing = tracking.questions.find((t) => t.id === q.id);
       if (!existing) {
         tracking.questions.push({
           id: q.id,
           box: 1,
           totalAttempts: 0,
-          firstTimeSuccesses: 0
+          firstTimeSuccesses: 0,
         });
       }
     });
@@ -61,8 +61,8 @@ export class SRSEngine {
     const tracking = this.getTracking(methodKey);
     const boxes = [[], [], [], []];
 
-    tracking.questions.forEach(t => {
-      const question = questions.find(q => q.id === t.id);
+    tracking.questions.forEach((t) => {
+      const question = questions.find((q) => q.id === t.id);
       if (question) {
         boxes[t.box - 1].push(question);
       }
@@ -89,7 +89,7 @@ export class SRSEngine {
 
   recordAttempt(methodKey, questionId, wasCorrect, isFirstAttempt) {
     const tracking = this.getTracking(methodKey);
-    const record = tracking.questions.find(t => t.id === questionId);
+    const record = tracking.questions.find((t) => t.id === questionId);
 
     if (record) {
       if (isFirstAttempt) {
@@ -113,7 +113,7 @@ export class SRSEngine {
   getMastery(methodKey) {
     const tracking = this.getTracking(methodKey);
     if (!tracking.questions.length) return 0;
-    const mastered = tracking.questions.filter(q => q.box === 4).length;
+    const mastered = tracking.questions.filter((q) => q.box === 4).length;
     return mastered / tracking.questions.length;
   }
 }

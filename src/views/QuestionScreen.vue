@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { METHODS } from '../engine/methods.js';
 import { QuestionGenerator } from '../engine/generator.js';
 import ClockButtons from '../components/ClockButtons.vue';
@@ -45,29 +45,89 @@ const stats = ref({
 
 const isFirstAttemptForQuestion = ref(true);
 
-onMounted(() => {
-  props.srs.registerQuestions(props.methodKey, allQuestions);
-  loadNextQuestion();
-});
+function getQuestionIdFromHash() {
+  const hash = window.location.hash;
+  const parts = hash.replace(/^#\/?/, '').split('/');
+  return parts[1] || null;
+}
 
-function loadNextQuestion() {
-  const next = props.srs.getNextQuestion(props.methodKey, allQuestions);
-  if (!next) {
-    handleFinish();
-    return;
+function loadQuestionFromHashOrSRS() {
+  const hashQId = getQuestionIdFromHash();
+  if (hashQId) {
+    const question = allQuestions.find(q => q.id === hashQId);
+    if (question) {
+      if (currentQuestion.value && currentQuestion.value.id === question.id) {
+        return;
+      }
+      displayQuestion(question);
+      return;
+    }
   }
+  loadNextQuestion();
+}
 
-  currentQuestion.value = next;
+function getNextSequentialQuestion() {
+  if (!allQuestions || allQuestions.length === 0) return null;
+  if (!currentQuestion.value) {
+    return allQuestions[0];
+  }
+  const currentIndex = allQuestions.findIndex(q => q.id === currentQuestion.value.id);
+  if (currentIndex === -1) {
+    return allQuestions[0];
+  }
+  const nextIndex = (currentIndex + 1) % allQuestions.length;
+  return allQuestions[nextIndex];
+}
+
+function displayQuestion(question) {
+  currentQuestion.value = question;
   correctIdentifier.value = null;
   incorrectIdentifiers.value = [];
   showNext.value = false;
   isFirstAttemptForQuestion.value = true;
   
-  if (!stats.value.distinctQuestionIds.has(next.id)) {
+  if (!stats.value.distinctQuestionIds.has(question.id)) {
     stats.value.totalQuestions++;
-    stats.value.distinctQuestionIds.add(next.id);
+    stats.value.distinctQuestionIds.add(question.id);
   }
 }
+
+function loadNextQuestion() {
+  const isSequential = new URLSearchParams(window.location.search).has('sequential');
+  let next = null;
+
+  if (isSequential) {
+    next = getNextSequentialQuestion();
+  } else {
+    next = props.srs.getNextQuestion(props.methodKey, allQuestions);
+  }
+
+  if (!next) {
+    handleFinish();
+    return;
+  }
+
+  const newHash = `#/${props.methodKey}/${next.id}`;
+  if (window.location.hash !== newHash) {
+    history.replaceState(null, null, newHash);
+  }
+
+  displayQuestion(next);
+}
+
+function handleHashChange() {
+  loadQuestionFromHashOrSRS();
+}
+
+onMounted(() => {
+  props.srs.registerQuestions(props.methodKey, allQuestions);
+  loadQuestionFromHashOrSRS();
+  window.addEventListener('hashchange', handleHashChange);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('hashchange', handleHashChange);
+});
 
 function handleSelection(payload) {
   const selected = payload.detail.label;
@@ -126,12 +186,9 @@ function showToastMessage(msg) {
 }
 
 function handleNext() {
-  // If we've answered enough questions or a mastery goal is met, we could finish.
-  // For now, let's keep it simple: after a certain number of questions per session?
-  // Or just let the user decide? The spec says "All Questions Completed in Current Stack".
-  // Since it's SRS, the stack is potentially infinite. 
-  // Let's define a "session" as 10 questions for now.
-  if (stats.value.distinctQuestionIds.size >= 10 || stats.value.distinctQuestionIds.size >= allQuestions.length) {
+  const isSequential = new URLSearchParams(window.location.search).has('sequential');
+  const limit = isSequential ? allQuestions.length : 10;
+  if (stats.value.distinctQuestionIds.size >= limit || stats.value.distinctQuestionIds.size >= allQuestions.length) {
     handleFinish();
   } else {
     loadNextQuestion();
