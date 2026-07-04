@@ -131,10 +131,14 @@ export class QuestionGenerator {
     // 6.2.4 Downward Pass Point Determination
     method.trebleCollision.forEach((collision, index) => {
       // Map work items to past-tense actions
-      const action = collision.nextWork
-        .replace('Make', 'made')
-        .replace('Dodge', 'done the')
-        .replace('Long', 'done');
+      let action = collision.nextWork;
+      if (action.startsWith('Make')) {
+        action = action.replace('Make', 'made');
+      } else if (action.startsWith('Dodge')) {
+        action = action.replace('Dodge', 'done the') + ' dodge';
+      } else if (action.startsWith('Long')) {
+        action = action.replace('Long', 'done Long');
+      }
       
       const isDownDodge = collision.nextWork.includes('Dodge') && collision.nextWork.includes('Down');
       let options = this.getPlaceOptions(method);
